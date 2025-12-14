@@ -3,3 +3,5 @@ infrastructure/.terraform/
 infrastructure/*.tfstate
 infrastructure/*.tfstate.backup
 infrastructure/*.tfvars
+!infrastructure/terraform.tfvars.example
+
