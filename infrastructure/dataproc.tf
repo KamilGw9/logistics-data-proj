@@ -1,5 +1,5 @@
 resource "google_dataproc_cluster" "dev_cluster" {
-  name   = "eco-logistics-dev-cluster"
+  name   = "${var.project_id}-${var.environment}-cluster"
   region = var.region
 
   cluster_config {
@@ -7,7 +7,7 @@ resource "google_dataproc_cluster" "dev_cluster" {
     
     master_config {
       num_instances = 1
-      machine_type  = "e2-standard-2"
+      machine_type  = var.dataproc_master_machine_type
       disk_config {
         boot_disk_type    = "pd-standard"
         boot_disk_size_gb = 50
@@ -34,12 +34,36 @@ resource "google_dataproc_cluster" "dev_cluster" {
       service_account_scopes = [
         "https://www.googleapis.com/auth/cloud-platform"
       ]
-      internal_ip_only = false 
+      
+      subnetwork = google_compute_subnetwork.dataproc_subnet.self_link
+      
+      internal_ip_only = true 
+
+      metadata = {
+        "block-project-ssh-keys" = "true"
+      }
+
+      shielded_instance_config {
+        enable_vtpm = true
+        enable_integrity_monitoring = true
+        enable_secure_boot = true
+      }
+    }
+
+    encryption_config {
+      kms_key_name = google_kms_crpyto_key.storage_key.id
+    }
+
+       lifecycle_config {
+      idle_delete_ttl = var.environment == "dev" ? "3600s" : null
     }
   }
 
   depends_on = [
     google_project_iam_member.dataproc_worker,
-    google_project_iam_member.storage_admin
+    google_project_iam_member.storage_object_creator,
+    google_compute_subnetwork.dataproc_subnet,
+    google_compute_router_nat.nat,
+    google_kms_crypto_key_iam_member.etl_storage_key_user
   ]
 }
